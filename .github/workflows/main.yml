@@ -38,7 +38,7 @@ jobs:
       - name: Build smali-lib
         run: |
           git clone --depth 1 https://github.com/REAndroid/smali-lib.git
-          cd smali-lib && chmod +x gradlew && ./gradlew fatJar --no-daemon
+          cd smali-lib && chmod +x gradlew && ./gradlew build fatJar --no-daemon
           ls -la build/libs/
 
       - name: Checkout APKEditor
