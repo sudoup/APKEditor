@@ -1,0 +1,92 @@
+name: Build from Source
+
+on:
+  push:
+    branches: [ "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build ARSCLib
+        run: |
+          git clone --depth 1 https://github.com/REAndroid/ARSCLib.git
+          cd ARSCLib && chmod +x gradlew && ./gradlew jar --no-daemon
+
+      - name: Build JCommand
+        run: |
+          git clone --depth 1 https://github.com/REAndroid/JCommand.git
+          cd JCommand && chmod +x gradlew && ./gradlew jar --no-daemon
+
+      - name: Build smali-lib
+        run: |
+          git clone --depth 1 https://github.com/REAndroid/smali-lib.git
+          cd smali-lib && chmod +x gradlew && ./gradlew jar --no-daemon
+
+      - name: Checkout APKEditor
+        uses: actions/checkout@v4
+        with:
+          path: APKEditor
+
+      - name: Prepare libraries
+        run: |
+          mkdir -p APKEditor/libs
+          cp ARSCLib/build/libs/*.jar APKEditor/libs/ARSCLib.jar
+          cp JCommand/build/libs/*.jar APKEditor/libs/JCommand.jar
+          cp smali-lib/build/libs/*.jar APKEditor/libs/smali.jar
+          sha256sum APKEditor/libs/*.jar
+
+      - name: Build APKEditor
+        working-directory: APKEditor
+        run: |
+          chmod +x gradlew
+          ./gradlew fatJar --no-daemon
+
+      - name: Get version
+        id: version
+        working-directory: APKEditor
+        run: |
+          VERSION=$(grep "version" build.gradle | head -1 | grep -oP "'\K[^']+")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Verify build
+        working-directory: APKEditor
+        run: |
+          sha256sum build/libs/*.jar
+          java -jar build/libs/APKEditor-*.jar -v
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: APKEditor ${{ steps.version.outputs.version }}
+          body: |
+            ## APKEditor ${{ steps.version.outputs.version }}
+            
+            🔒 **100% Open Source Build**
+            
+            All libraries built from source:
+            - [ARSCLib](https://github.com/REAndroid/ARSCLib)
+            - [JCommand](https://github.com/REAndroid/JCommand)
+            - [smali-lib](https://github.com/REAndroid/smali-lib)
+          files: APKEditor/build/libs/APKEditor-*.jar
+          draft: false
+          prerelease: false
