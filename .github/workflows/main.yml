@@ -38,7 +38,8 @@ jobs:
       - name: Build smali-lib
         run: |
           git clone --depth 1 https://github.com/REAndroid/smali-lib.git
-          cd smali-lib && chmod +x gradlew && ./gradlew jar --no-daemon
+          cd smali-lib && chmod +x gradlew && ./gradlew fatJar --no-daemon
+          ls -la build/libs/
 
       - name: Checkout APKEditor
         uses: actions/checkout@v4
@@ -50,7 +51,7 @@ jobs:
           mkdir -p APKEditor/libs
           cp ARSCLib/build/libs/*.jar APKEditor/libs/ARSCLib.jar
           cp JCommand/build/libs/*.jar APKEditor/libs/JCommand.jar
-          cp smali-lib/build/libs/*.jar APKEditor/libs/smali.jar
+          cp smali-lib/build/libs/*-fat.jar APKEditor/libs/smali.jar || cp smali-lib/build/libs/*.jar APKEditor/libs/smali.jar
           sha256sum APKEditor/libs/*.jar
 
       - name: Build APKEditor
